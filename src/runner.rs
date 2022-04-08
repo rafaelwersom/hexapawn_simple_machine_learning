@@ -1,6 +1,25 @@
-use crate::hexapawn::{game::*, interface::*};
+use std::io::Write;
+
+use crate::hexapawn::{ interface::*};
 
 pub fn run() {
-    let h: Hexapawn = Hexapawn::new();
-    h.print_board();
+    let mut input_string = String::new();
+    println!("Welcome to Hexapawn");
+    print!("Enter a command: ");
+    let _ = std::io::stdout().flush();
+    std::io::stdin().read_line(&mut input_string).expect("Failed to read line");
+
+    if input_string.eq("help\n") {
+        help_main_menu();
+        run();
+    } else if input_string.eq("exit\n") {
+        println!("Thanks for Playing!");
+        return;
+    } else if input_string.eq("play_friend\n") {
+        play_friend();
+        run()
+    } else { 
+        println!("Enter a valid command, use \"help\" for complete list of commands");
+        run(); 
+    }
 }
