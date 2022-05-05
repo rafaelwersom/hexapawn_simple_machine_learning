@@ -18,8 +18,11 @@ pub fn run() {
     } else if input_string.eq("play_friend\n") {
         play_friend();
         run()
+    } else if input_string.eq("play_ai\n") {
+        play_ai();
+        run();
     } else { 
-        println!("Enter a valid command, use \"help\" for complete list of commands");
+        println!("\nEnter a valid command, use \"help\" for complete list of commands\n");
         run(); 
     }
 }
