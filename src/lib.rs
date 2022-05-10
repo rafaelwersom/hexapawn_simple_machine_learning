@@ -344,6 +344,7 @@ pub mod interface {
         println!("play_friend - Play against friend");
         println!("play_ai - Play against the computer");
         println!("clear - erases data collected by AI opponent");
+        println!("info - get the data collected by AI opponent");
         println!("exit - Exit program\n");
     }
 
@@ -356,9 +357,15 @@ pub mod interface {
         println!("-You can't walk to a spot where there is a piece already.\n")
     }
 
+    pub fn info() {
+        println!("\nInfo:");
+        let ai = AI::from("data/moves_ai.csv");
+        println!("You played against the computer {} times and won {} times!\n", ai.num_times_played, ai.num_times_lost);
+    }
+
     pub fn clear() -> Result<(), std::io::Error> {
         let mut f = std::fs::OpenOptions::new().write(true).truncate(true).open("data/moves_ai.csv")?;
-        f.write_all(b"0\n")?;
+        f.write_all(b"0\n0\n")?;
         Ok(())
     }
 
@@ -403,9 +410,10 @@ pub mod interface {
             println!("The Machine Wins!\n");
         } else {
             println!("Player1 Wins! But the Machine gets smarter!\n");
+            ai.num_times_lost += 1;
         }
         ai.num_times_played += 1;
-        println!("You played against the computer {} times!\n", ai.num_times_played);
+        println!("You played against the computer {} times and won {} times!\n", ai.num_times_played, ai.num_times_lost);
         ai.write_to_file().unwrap();
     }
 
@@ -459,12 +467,13 @@ pub mod ai {
 
     pub struct AI {
         pub num_times_played: u8,
+        pub num_times_lost: u8,
         pub losing_sequences: Vec<String>
     }
 
     impl AI {
         pub fn new() -> Self {
-            AI { num_times_played: 0, losing_sequences: Vec::new() }
+            AI { num_times_played: 0, num_times_lost: 0, losing_sequences: Vec::new() }
         }
 
         pub fn from(filename: &str) -> Self {
@@ -476,6 +485,8 @@ pub mod ai {
                 let line = read_line.unwrap();
                 if line_num == 0 {
                     retval.num_times_played = line.parse().unwrap();
+                } else if line_num == 1 {
+                    retval.num_times_lost = line.parse().unwrap();
                 } else {
                     for pmove in line.split(',') {
                         retval.losing_sequences.push(pmove.to_owned());
@@ -503,6 +514,8 @@ pub mod ai {
         pub fn write_to_file(&self) -> Result<(), std::io::Error> {
             let mut f = std::fs::OpenOptions::new().write(true).truncate(true).open("data/moves_ai.csv")?;
             f.write_all(self.num_times_played.to_string().as_bytes())?;
+            f.write_all(b"\n")?;
+            f.write_all(self.num_times_lost.to_string().as_bytes())?;
             f.write_all(b"\n")?;
             for sequence in &self.losing_sequences[..] {
                 f.write_all(sequence.as_bytes())?;

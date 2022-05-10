@@ -21,6 +21,9 @@ pub fn run() {
     } else if input_string.eq("play_ai\n") {
         play_ai();
         run();
+    } else if input_string.eq("info\n") {
+        info();
+        run();
     } else if input_string.eq("clear\n") {
         match clear() {
             Err(_i) => {
