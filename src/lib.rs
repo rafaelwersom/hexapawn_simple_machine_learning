@@ -30,24 +30,10 @@ pub mod game {
             }
         }
 
-        // Checks if the passed player won
-        pub fn is_winner(&self, turn: Turn) -> bool {
-            if turn == Turn::Player1 {
-                if self.board[2][0] == Square::Player1 || self.board[2][1] == Square::Player1 || self.board[2][2] == Square::Player1 || !self.opponent_can_move() {
-                    return true;
-                }
-                return false;
-            } else {
-                if self.board[0][0] == Square::Player2 || self.board[0][1] == Square::Player2 || self.board[0][2] == Square::Player2 || !self.opponent_can_move() {
-                    return true;
-                }
-                return false;
-            }
-        }
-
         // Check if game is finished
         pub fn game_finished(&self) -> bool {
-            return self.is_winner(Turn::Player1) || self.is_winner(Turn::Player2);
+            self.board[2][0] == Square::Player1 || self.board[2][1] == Square::Player1 || self.board[2][2] == Square::Player1 || !self.opponent_can_move() 
+            || self.board[0][0] == Square::Player2 || self.board[0][1] == Square::Player2 || self.board[0][2] == Square::Player2
         }
 
         // Checks if there are any legal moves to be done by the passed player
@@ -100,6 +86,25 @@ pub mod game {
                 }
             }
             return false;
+        }
+
+        pub fn give_ai_possible_moves(&self) -> Vec<String> {
+            let mut retval = Vec::new();
+            if self.board[2][0] == Square::Player2 && self.board[1][0] == Square::Empty { retval.push("a2".to_owned()); }
+            if self.board[2][1] == Square::Player2 && self.board[1][1] == Square::Empty { retval.push("b2".to_owned()); }
+            if self.board[2][2] == Square::Player2 && self.board[1][2] == Square::Empty { retval.push("c2".to_owned()); }
+            if self.board[1][0] == Square::Player2 && self.board[0][0] == Square::Empty { retval.push("a1".to_owned()); }
+            if self.board[1][1] == Square::Player2 && self.board[0][1] == Square::Empty { retval.push("b1".to_owned()); }
+            if self.board[1][2] == Square::Player2 && self.board[0][2] == Square::Empty { retval.push("c1".to_owned()); }
+            if self.board[2][0] == Square::Player2 && self.board[1][1] == Square::Player1 { retval.push("axb2".to_owned()); }
+            if self.board[2][2] == Square::Player2 && self.board[1][1] == Square::Player1 { retval.push("cxb2".to_owned()); }
+            if self.board[2][1] == Square::Player2 && self.board[1][0] == Square::Player1 { retval.push("bxa2".to_owned()); }
+            if self.board[2][1] == Square::Player2 && self.board[1][2] == Square::Player1 { retval.push("bxc2".to_owned()); }
+            if self.board[1][0] == Square::Player2 && self.board[0][1] == Square::Player1 { retval.push("axb1".to_owned()); }
+            if self.board[1][2] == Square::Player2 && self.board[0][1] == Square::Player1 { retval.push("cxb1".to_owned()); }
+            if self.board[1][1] == Square::Player2 && self.board[0][0] == Square::Player1 { retval.push("bxa1".to_owned()); }
+            if self.board[1][1] == Square::Player2 && self.board[0][2] == Square::Player1 { retval.push("bxc1".to_owned()); }
+            retval
         }
 
         // Make a move based on a string
@@ -336,8 +341,9 @@ pub mod interface {
     pub fn help_main_menu() {
         println!("\nValid commands:");
         println!("help - Show valid commands");
-        println!("play_ai - Play against the computer");
         println!("play_friend - Play against friend");
+        println!("play_ai - Play against the computer");
+        println!("clear - erases data collected by AI opponent");
         println!("exit - Exit program\n");
     }
 
@@ -348,6 +354,12 @@ pub mod interface {
         println!("-(initial column + \"x\" + target piece column + row) for attacking move. ex: \"axb2\"");
         println!("-You can't go backwards or capture your own piece.");
         println!("-You can't walk to a spot where there is a piece already.\n")
+    }
+
+    pub fn clear() -> Result<(), std::io::Error> {
+        let mut f = std::fs::OpenOptions::new().write(true).truncate(true).open("data/moves_ai.csv")?;
+        f.write_all(b"0\n")?;
+        Ok(())
     }
 
     pub fn play_ai() {
@@ -368,28 +380,22 @@ pub mod interface {
                         game.print_board();
                         game.toggle_turn();
                         if !game.game_finished() {
-                            game_sequence = game_sequence + &input_string[..];
+                            game_sequence.push_str(&input_string[..input_string.len() - 1]);
                         } else {
                             ai.losing_sequences.push((&game_sequence[..]).to_string());
                         }
+                        println!("Current game sequence: {}", game_sequence);
                     }
                 },
                 _ => {
-                    let mut non_legal_moves = Vec::new();
-                    let mut input_string = ai.get_move(&non_legal_moves);
-                    let mut new_sequence = String::from(&game_sequence);
-                    new_sequence = new_sequence + input_string;
-                    print!("The computer will make the move: ");
-                    while !game.move_piece(&input_string) || ai.losing_sequences.contains(&new_sequence) {
-                        non_legal_moves.push(input_string.to_string());
-                        input_string = ai.get_move(&non_legal_moves);
-                        new_sequence = String::from(&game_sequence);
-                        new_sequence = new_sequence + input_string;
-                    }
-                    println!("{}", input_string);
-                    game_sequence = game_sequence + &input_string[..];
+                    let mut input_string = ai.get_move(game.give_ai_possible_moves(), &game_sequence);
+                    game_sequence.push_str(&input_string[..]);
+                    input_string.push('\n');
+                    game.move_piece(&input_string);
                     game.print_board();
                     game.toggle_turn();
+                    print!("The computer made the move: {}", input_string);
+                    println!("Current game sequence: {}", game_sequence);
                 },
             }
         }
@@ -398,6 +404,8 @@ pub mod interface {
         } else {
             println!("Player1 Wins! But the Machine gets smarter!\n");
         }
+        ai.num_times_played += 1;
+        println!("You played against the computer {} times!\n", ai.num_times_played);
         ai.write_to_file().unwrap();
     }
 
@@ -451,13 +459,12 @@ pub mod ai {
 
     pub struct AI {
         pub num_times_played: u8,
-        pub moves: Vec<String>,
         pub losing_sequences: Vec<String>
     }
 
     impl AI {
         pub fn new() -> Self {
-            AI { num_times_played: 0, moves: Vec::new(), losing_sequences: Vec::new() }
+            AI { num_times_played: 0, losing_sequences: Vec::new() }
         }
 
         pub fn from(filename: &str) -> Self {
@@ -469,10 +476,6 @@ pub mod ai {
                 let line = read_line.unwrap();
                 if line_num == 0 {
                     retval.num_times_played = line.parse().unwrap();
-                } else if line_num == 1 {
-                    for pmove in line.split(',') {
-                        retval.moves.push(pmove.to_owned());
-                    }
                 } else {
                     for pmove in line.split(',') {
                         retval.losing_sequences.push(pmove.to_owned());
@@ -483,30 +486,29 @@ pub mod ai {
             retval
         }
 
-        pub fn get_move(&self, non_legal_moves: &Vec<String>) -> &String {
+        pub fn get_move(&self, possible_moves: Vec<String>, game_sequence: &String) -> String {
             let mut rng = rand::thread_rng();
-            let mut choice = self.moves.choose(&mut rng).unwrap();
-            while non_legal_moves.contains(choice) {
-                choice = self.moves.choose(&mut rng).unwrap();
+            let mut input_string = possible_moves.choose(&mut rng).unwrap();
+            let mut new_sequence = String::from(game_sequence);
+            new_sequence.push_str(&input_string);
+            while self.losing_sequences.iter().any(|i| i == new_sequence.as_str()) {
+                rng = rand::thread_rng();
+                input_string = possible_moves.choose(&mut rng).unwrap();
+                new_sequence = String::from(game_sequence);
+                new_sequence.push_str(&input_string);
             }
-            choice
+            return input_string.to_owned();
         }
 
         pub fn write_to_file(&self) -> Result<(), std::io::Error> {
             let mut f = std::fs::OpenOptions::new().write(true).truncate(true).open("data/moves_ai.csv")?;
             f.write_all(self.num_times_played.to_string().as_bytes())?;
             f.write_all(b"\n")?;
-            for pmove in &self.moves[..] {
-                f.write_all(pmove.as_bytes())?;
-                f.write_all(b",")?;
-            }
-            f.write(b"\n")?;
             for sequence in &self.losing_sequences[..] {
                 f.write_all(sequence.as_bytes())?;
                 f.write_all(b",")?;
             }
             Ok(())
         }
-
     }
 }

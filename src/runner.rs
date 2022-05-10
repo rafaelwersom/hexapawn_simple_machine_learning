@@ -21,6 +21,16 @@ pub fn run() {
     } else if input_string.eq("play_ai\n") {
         play_ai();
         run();
+    } else if input_string.eq("clear\n") {
+        match clear() {
+            Err(_i) => {
+                panic!();
+            },
+            _ => {
+                println!("The data collected by the AI opponent has been cleared\n");
+            },
+        }
+        run();
     } else { 
         println!("\nEnter a valid command, use \"help\" for complete list of commands\n");
         run(); 
